@@ -1,50 +1,50 @@
 import math
 
-class KDNode(object):
-    def __init__(self,point,disc):
-        assert isinstance(point,tuple)
-        assert isinstance(disc,int)
-        assert disc >= 0 and disc < len(point)
+class KDTree(object):
+    class KDNode(object):
+        def __init__(self,point,disc):
+            assert isinstance(point,tuple)
+            assert isinstance(disc,int)
+            assert disc >= 0 and disc < len(point)
 
-        self.point = point
-        self.disc = disc
-        self.left = None
-        self.right = None
+            self.point = point
+            self.disc = disc
+            self.left = None
+            self.right = None
 
-    def __repr__(self):
-        return 'KDNode(' + str(self.point) + ',' + str(self.disc) + ')'
+        def __repr__(self):
+            return 'KDTree.KDNode(' + str(self.point) + ',' + str(self.disc) + ')'
 
-    def __str__(self):
-        return '(' + str(self.disc) + '|' + ','.join(map(str,self.point)) + ')'
+        def __str__(self):
+            return '(' + str(self.disc) + '|' + ','.join(map(str,self.point)) + ')'
 
-    def __len__(self):
-        return len(self.point)
+        def __eq__(self,other):
+            if isinstance(other,KDTree.KDNode) and len(other.point) == len(self.point):
+                return KDTree._node_equal(self,other.point)
+            elif isinstance(other,tuple) and len(other) == len(self.point):
+                return KDTree._node_equal(self,other)
+            else:
+                return False
 
-    def __getitem__(self,key):
-        assert key >= 0 and key < len(self.point)
-
-        return self.point[key]
-
-    def equal_with_mask(self,point,mask):
-        assert isinstance(point,KDNode) or isinstance(point,tuple)
-        assert isinstance(mask,tuple)
-        assert len(self.point) == len(point)
-        assert len(point) == len(mask)
-        assert all(map(lambda x: isinstance(x,bool),mask))
-
-        for i in range(0,len(point)):
-            if mask[i] and self.point[i] != point[i]:
+    @staticmethod
+    def _node_equal(node,point):
+        for i in range(0,len(node.point)):
+            if node.point[i] != point[i]:
                 return False
 
         return True
 
-class KDTree(object):
-    def __init__(self,size):
-        assert isinstance(size,int)
-        assert size > 1
+    @staticmethod
+    def _node_equal_with_mask(node,point,mask):
+        for i in range(0,len(node.point)):
+            if mask[i] and node.point[i] != point[i]:
+                return False
+    
+        return True
 
-        self.root = None
-        self.size = size
+    @staticmethod
+    def _node_point_distance(node,point):
+        return math.sqrt(sum(map(lambda (x,y): (x - y)*(x - y),zip(node.point,point))))
 
     @staticmethod
     def _node_to_str(node,level,mode):
@@ -62,12 +62,12 @@ class KDTree(object):
     def _insert(size,node,point):
         if point[node.disc] <= node.point[node.disc]:
             if node.left == None:
-                node.left = KDNode(point,(node.disc + 1) % size)
+                node.left = KDTree.KDNode(point,(node.disc + 1) % size)
             else:
                 KDTree._insert(size,node.left,point)
         else:
             if node.right == None:
-                node.right = KDNode(point,(node.disc + 1) % size)
+                node.right = KDTree.KDNode(point,(node.disc + 1) % size)
             else:
                 KDTree._insert(size,node.right,point)
 
@@ -88,7 +88,7 @@ class KDTree(object):
         if node == None:
             return result
         else:
-            if node.equal_with_mask(point,mask):
+            if KDTree._node_equal_with_mask(node,point,mask):
                 result.append(node)
 
             if mask[node.disc]:
@@ -106,10 +106,6 @@ class KDTree(object):
             return result
 
     @staticmethod
-    def _node_point_distance(node,point):
-        return math.sqrt(sum(map(lambda (x,y): (x - y)*(x - y),zip(node.point,point))))
-
-    @staticmethod
     def _find_nearest(size,node,point,debug_path):
         if node == None:
             return (None,float("inf"))
@@ -117,7 +113,7 @@ class KDTree(object):
             if debug_path:
                 print node
 
-            if node.equal_with_mask(point,(True,) * size):
+            if KDTree._node_equal(node,point):
                 return (node,0)
             elif point[node.disc] < node.point[node.disc]:
                 (best,distance) = KDTree._find_nearest(size,node.left,point,debug_path)
@@ -142,6 +138,14 @@ class KDTree(object):
             else:
                 return (best,distance)
 
+
+    def __init__(self,size):
+        assert isinstance(size,int)
+        assert size > 1
+
+        self.root = None
+        self.size = size
+
     def __str__(self):
         return KDTree._node_to_str(self.root,0,'r')
 
@@ -150,7 +154,7 @@ class KDTree(object):
         assert len(point) == self.size
 
         if self.root == None:
-            self.root = KDNode(point,0)
+            self.root = KDTree.KDNode(point,0)
         else:
             KDTree._insert(self.size,self.root,point)
 
@@ -160,7 +164,12 @@ class KDTree(object):
         assert isinstance(point,tuple)
         assert len(point) == self.size
 
-        return KDTree._find_exact(self.size,self.root,point)
+        found = KDTree._find_exact(self.size,self.root,point)
+
+        if found:
+            return found.point
+        else:
+            return None
 
     def find_with_mask(self,point,mask):
         assert isinstance(point,tuple)
@@ -169,14 +178,14 @@ class KDTree(object):
         assert len(mask) == self.size
         assert all(map(lambda x: isinstance(x,bool),mask))
 
-        return KDTree._find_with_mask(self.size,self.root,point,mask,[])
+        return map(lambda x: x.point,KDTree._find_with_mask(self.size,self.root,point,mask,[]))
 
     def find_nearest(self,point,debug_path=False):
         assert isinstance(point,tuple)
         assert isinstance(debug_path,bool)
         assert len(point) == self.size
 
-        return KDTree._find_nearest(self.size,self.root,point,debug_path)[0]
+        return KDTree._find_nearest(self.size,self.root,point,debug_path)[0].point
 
 def make_for_test1():
     q = KDTree()
