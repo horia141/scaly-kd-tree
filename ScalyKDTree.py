@@ -113,6 +113,8 @@ class KDTree(object):
             if debug_path:
                 print node
 
+            KDTree.nearest_count += 1
+
             if KDTree._node_equal(node,point):
                 return (node,0)
             elif point[node.disc] < node.point[node.disc]:
@@ -147,7 +149,7 @@ class KDTree(object):
         self.size = size
 
     def __str__(self):
-        return KDTree._node_to_str(self.root,0,'r')
+        return KDTree._node_to_str(self.root,0,'*')
 
     def insert(self,point):
         assert isinstance(point,tuple)
@@ -180,15 +182,21 @@ class KDTree(object):
 
         return map(lambda x: x.point,KDTree._find_with_mask(self.size,self.root,point,mask,[]))
 
-    def find_nearest(self,point,debug_path=False):
+    def find_nearest(self,point,debug_path=False,count_nodes=False):
         assert isinstance(point,tuple)
         assert isinstance(debug_path,bool)
         assert len(point) == self.size
 
-        return KDTree._find_nearest(self.size,self.root,point,debug_path)[0].point
+        KDTree.nearest_count = 0
+        found = KDTree._find_nearest(self.size,self.root,point,debug_path)[0].point
+
+        if count_nodes == True:
+            return (found,KDTree.nearest_count)
+
+        return found
 
 def make_for_test1():
-    q = KDTree()
+    q = KDTree(2)
 
     q.insert((1,2))
     q.insert((5,3))
@@ -202,7 +210,7 @@ def make_for_test1():
     return q
 
 def make_for_test2():
-    q = KDTree()
+    q = KDTree(2)
 
     q.insert((5,5))
     q.insert((2,3))

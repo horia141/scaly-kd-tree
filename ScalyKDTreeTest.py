@@ -409,6 +409,13 @@ class KDTreeTest(unittest.TestCase):
         for t in train:
             iris.insert(t)
 
+        counts = []
+
         for i in range(0,len(test)):
+            (fnd,cnt) = iris.find_nearest(test[i],count_nodes=True)
+            counts.append(cnt)
+
             if i != 36:
-                self.assertEqual(iris.find_nearest(test[i]),found[i])
+                self.assertEqual(fnd,found[i])
+
+        # print sum(counts)
